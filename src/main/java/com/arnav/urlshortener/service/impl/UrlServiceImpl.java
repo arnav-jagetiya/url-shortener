@@ -113,8 +113,16 @@ public class UrlServiceImpl implements UrlService {
         shortUrl.setClickCount(shortUrl.getClickCount() + 1);
         shortUrlRepository.save(shortUrl);
 
-        // Store result in Redis
-        redisTemplate.opsForValue().set(cacheKey, shortUrl.getOriginalUrl(), 24, TimeUnit.HOURS);
+        // Store result in Redis with dynamic TTL based on expiration date
+        long ttlSeconds = 24 * 60 * 60; // Default: 24 hours in seconds
+        if (shortUrl.getExpiresAt() != null) {
+            long secondsToExpiry = java.time.Duration.between(LocalDateTime.now(), shortUrl.getExpiresAt()).getSeconds();
+            if (secondsToExpiry <= 0) {
+                throw new UrlExpiredException("Short URL has expired");
+            }
+            ttlSeconds = Math.min(ttlSeconds, secondsToExpiry);
+        }
+        redisTemplate.opsForValue().set(cacheKey, shortUrl.getOriginalUrl(), ttlSeconds, TimeUnit.SECONDS);
 
         return shortUrl.getOriginalUrl();
     }
@@ -151,6 +159,7 @@ public class UrlServiceImpl implements UrlService {
     private UrlResponse mapToResponse(ShortUrl shortUrl, String baseUrl) {
         String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
         return UrlResponse.builder()
+                .id(shortUrl.getId())
                 .originalUrl(shortUrl.getOriginalUrl())
                 .shortCode(shortUrl.getShortCode())
                 .shortUrl(cleanBaseUrl + shortUrl.getShortCode())

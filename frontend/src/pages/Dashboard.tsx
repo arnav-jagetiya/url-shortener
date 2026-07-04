@@ -1,20 +1,96 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { urlService } from "../services/urls";
+import type { UrlResponse } from "../types/url";
+import { useToast } from "../contexts/ToastContext";
+import { AnalyticsCards } from "../components/AnalyticsCards";
+import { CreateUrlForm } from "../components/CreateUrlForm";
+import { UrlTable } from "../components/UrlTable";
+import { SkeletonLoader } from "../components/SkeletonLoader";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 
 export const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const [urls, setUrls] = useState<UrlResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modal & Deletion states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [urlToDelete, setUrlToDelete] = useState<UrlResponse | null>(null);
+
+  // Declare fetchUrls with useCallback before useEffect
+  const fetchUrls = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await urlService.getUserUrls();
+      setUrls(data);
+    } catch {
+      setError("Failed to load your shortened URLs. Please reload.");
+      showToast("Error loading URL list.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUrls();
+  }, [fetchUrls]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+  // Optimistic UI updates - creation
+  const handleUrlCreated = (newUrl: UrlResponse) => {
+    setUrls((prev) => [newUrl, ...prev]);
+  };
+
+  const handleDeleteRequest = (url: UrlResponse) => {
+    setUrlToDelete(url);
+    setDeleteModalOpen(true);
+  };
+
+  // Optimistic UI updates - deletion
+  const handleDeleteConfirm = async () => {
+    if (!urlToDelete) return;
+
+    const originalUrls = [...urls];
+    const targetId = urlToDelete.id;
+    const targetShortCode = urlToDelete.shortCode;
+
+    // Optimistically remove from state immediately
+    setUrls((prev) => prev.filter((item) => item.id !== targetId));
+    setDeleteModalOpen(false);
+    setUrlToDelete(null);
+    showToast("Deleting URL...", "info");
+
+    try {
+      await urlService.deleteUrl(targetId);
+      showToast("URL successfully deleted.", "success");
+    } catch {
+      // Revert state if backend request fails
+      setUrls(originalUrls);
+      showToast(`Failed to delete link shortify.local/${targetShortCode}. Restored.`, "error");
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setUrlToDelete(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30 selection:text-indigo-200">
       {/* Top Navbar */}
-      <nav className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md">
+      <nav className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
@@ -35,19 +111,19 @@ export const Dashboard: React.FC = () => {
                   />
                 </svg>
               </div>
-              <span className="text-xl font-extrabold tracking-tight text-white">
+              <span className="text-xl font-extrabold tracking-tight text-white select-none">
                 Shortify
               </span>
             </div>
 
-            {/* Logout Button */}
+            {/* Logout actions */}
             <div className="flex items-center gap-4">
               <span className="hidden sm:inline-block text-xs font-semibold text-slate-400">
-                Logged in as: <span className="text-indigo-400">{user?.email}</span>
+                Logged in as: <span className="text-indigo-400 font-medium">{user?.email}</span>
               </span>
               <button
                 onClick={handleLogout}
-                className="cursor-pointer rounded-lg bg-slate-900 border border-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition-all"
+                className="cursor-pointer rounded-lg bg-slate-900 border border-slate-800 px-4 py-2 text-xs font-semibold text-slate-350 hover:text-white hover:border-slate-700 transition-all"
               >
                 Log Out
               </button>
@@ -56,45 +132,71 @@ export const Dashboard: React.FC = () => {
         </div>
       </nav>
 
-      {/* Main Dashboard Panel */}
-      <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-slate-900 bg-slate-900/20 p-8 sm:p-12 shadow-2xl">
-          {/* Background Ambient Glow */}
-          <div className="absolute top-0 right-0 -z-10 h-[250px] w-[350px] rounded-full bg-indigo-500/5 blur-[95px]" />
-          <div className="absolute bottom-0 left-0 -z-10 h-[250px] w-[350px] rounded-full bg-violet-500/5 blur-[95px]" />
-
-          {/* Heading */}
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-xs font-semibold text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Connected to Session
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-4">
-              Welcome back, {user?.name || "User"}!
-            </h1>
-            <p className="text-sm text-slate-400 max-w-xl">
-              This is your project workspace placeholder. Authentication has been fully verified with the Shortify REST security layer.
-            </p>
-          </div>
-
-          {/* Profile Card */}
-          <div className="mt-10 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-6 space-y-4 max-w-md shadow-md">
-            <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2">
-              Authentication Context Profile
-            </h3>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <span className="text-slate-500 font-semibold uppercase">Name</span>
-              <span className="col-span-2 text-white font-medium">{user?.name}</span>
-
-              <span className="text-slate-500 font-semibold uppercase">Email</span>
-              <span className="col-span-2 text-white font-medium break-all">{user?.email}</span>
-
-              <span className="text-slate-500 font-semibold uppercase">Role</span>
-              <span className="col-span-2 text-indigo-400 font-medium">Standard User</span>
+      {/* Main Container */}
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-10">
+        
+        {/* Error State Banner */}
+        {error && (
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-left space-y-1">
+              <h4 className="text-sm font-bold text-red-400">Syncing Error</h4>
+              <p className="text-xs text-red-300/80">{error}</p>
             </div>
+            <button
+              onClick={fetchUrls}
+              className="cursor-pointer shrink-0 rounded-lg bg-red-650 hover:bg-red-650 px-4 py-2 text-xs font-semibold text-white"
+            >
+              Retry Connection
+            </button>
           </div>
-        </div>
+        )}
+
+        {loading ? (
+          <SkeletonLoader />
+        ) : (
+          <>
+            {/* Top Metrics Summary */}
+            <AnalyticsCards urls={urls} />
+
+            {/* Short URL Creator Form */}
+            <CreateUrlForm onUrlCreated={handleUrlCreated} />
+
+            {/* Table listing / Empty State */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-bold text-white border-b border-slate-900 pb-2">
+                Your Shortened Links
+              </h3>
+              
+              {urls.length === 0 ? (
+                <div className="rounded-3xl border border-slate-900 bg-slate-900/10 px-8 py-16 text-center shadow-xl">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">No links shortened yet</h3>
+                  <p className="mx-auto mt-2 max-w-sm text-xs text-slate-500 leading-relaxed">
+                    Paste your first long URL in the creator box above to generate sub-millisecond short links.
+                  </p>
+                </div>
+              ) : (
+                <UrlTable urls={urls} onDeleteRequest={handleDeleteRequest} />
+              )}
+            </div>
+          </>
+        )}
       </main>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        title="Delete Shortened Link"
+        message={`Are you sure you want to permanently delete shortify.local/${urlToDelete?.shortCode}? This will evict cache records and render the redirect inactive.`}
+        confirmText="Delete Link"
+        cancelText="Keep Link"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UrlResponse {
+    private Long id;
     private String originalUrl;
     private String shortUrl;
     private String shortCode;

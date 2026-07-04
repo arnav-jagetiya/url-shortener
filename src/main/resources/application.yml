@@ -27,3 +27,4 @@ app:
   jwt:
     secret: ${JWT_SECRET:jwt_secret_placeholder}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours in ms
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}

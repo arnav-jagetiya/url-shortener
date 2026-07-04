@@ -5,6 +5,7 @@ export interface CreateUrlRequest {
 }
 
 export interface UrlResponse {
+  id: number;
   originalUrl: string;
   shortUrl: string;
   shortCode: string;
