@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from "react";
 
-export type ToastType = "success" | "error" | "info";
+// Differentiate Success, Error, Warning, and Info types
+export type ToastType = "success" | "error" | "warning" | "info";
 
 interface Toast {
   id: string;
@@ -36,29 +37,40 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {/* Toast Notification Container */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full" role="live">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`flex items-center justify-between rounded-xl border p-4 shadow-xl backdrop-blur-xl animate-slideIn transition-all duration-300 ${
               toast.type === "success"
-                ? "border-emerald-500/30 bg-slate-900/90 text-emerald-400"
+                ? "border-emerald-500/30 bg-slate-950/90 text-emerald-400"
                 : toast.type === "error"
-                  ? "border-red-500/30 bg-slate-900/90 text-red-400"
-                  : "border-indigo-500/30 bg-slate-900/90 text-indigo-400"
+                  ? "border-red-500/30 bg-slate-950/90 text-red-400"
+                  : toast.type === "warning"
+                    ? "border-amber-500/30 bg-slate-950/90 text-amber-400"
+                    : "border-indigo-500/30 bg-slate-950/90 text-indigo-400"
             }`}
           >
             <div className="flex items-center gap-3">
+              {/* Success SVG Icon */}
               {toast.type === "success" && (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-emerald-400 shrink-0">
                   <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
                 </svg>
               )}
+              {/* Error SVG Icon */}
               {toast.type === "error" && (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-red-400 shrink-0">
                   <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" />
                 </svg>
               )}
+              {/* Warning SVG Icon */}
+              {toast.type === "warning" && (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-amber-400 shrink-0">
+                  <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+                </svg>
+              )}
+              {/* Info SVG Icon */}
               {toast.type === "info" && (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-indigo-400 shrink-0">
                   <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.073 2.1 1.006 1.601 2.008l-1.31 2.628a.375.375 0 0 0 .344.547h1.253a.75.75 0 0 1 0 1.5h-1.253c-1.15 0-2.1-1.009-1.602-2.01l1.31-2.627a.375.375 0 0 0-.344-.547H9.75a.75.75 0 0 1 0-1.5h1.206Z" clipRule="evenodd" />
@@ -68,7 +80,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="ml-4 cursor-pointer text-slate-400 hover:text-white"
+              className="ml-4 cursor-pointer text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-md"
+              aria-label="Dismiss Toast Notification"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />

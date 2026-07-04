@@ -28,6 +28,8 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
     }
   })();
 
+  const isUrlValid = originalUrl && !urlError;
+
   // Instant Custom Alias Validation
   const aliasError = (() => {
     if (!customAlias) return null;
@@ -41,6 +43,8 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
     }
     return null;
   })();
+
+  const isAliasValid = customAlias && !aliasError;
 
   // Expiration date human-readable formatter
   const formatExpirationDisplay = (dateString: string): string | null => {
@@ -156,23 +160,37 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
           <label htmlFor="long-url" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
             Destination URL
           </label>
-          <input
-            id="long-url"
-            type="text"
-            required
-            value={originalUrl}
-            onChange={(e) => setOriginalUrl(e.target.value)}
-            placeholder="https://example.com/very/long/destination/path"
-            className={`w-full rounded-xl border bg-slate-950/80 px-4 py-3.5 text-xs text-white placeholder-slate-550 focus:outline-none focus:ring-1 transition-colors ${
-              urlError 
-                ? "border-red-500/50 focus:border-red-500 focus:ring-red-500" 
-                : originalUrl 
-                  ? "border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-550" 
-                  : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"
-            }`}
-          />
+          <div className="relative">
+            <input
+              id="long-url"
+              type="text"
+              required
+              value={originalUrl}
+              onChange={(e) => setOriginalUrl(e.target.value)}
+              placeholder="https://example.com/very/long/destination/path"
+              className={`w-full rounded-xl border bg-slate-950/80 pl-4 pr-10 py-3.5 text-xs text-white placeholder-slate-550 focus:outline-none focus:ring-1 transition-all ${
+                urlError 
+                  ? "border-red-500/50 focus:border-red-500 focus:ring-red-550" 
+                  : isUrlValid 
+                    ? "border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-550" 
+                    : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"
+              }`}
+            />
+            {isUrlValid && (
+              <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-emerald-400 animate-in fade-in zoom-in duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              </span>
+            )}
+          </div>
           {urlError && (
             <span className="text-[11px] text-red-400 mt-1.5 block">{urlError}</span>
+          )}
+          {isUrlValid && (
+            <span className="text-[11px] text-emerald-400 mt-1.5 block flex items-center gap-1 animate-in fade-in duration-200">
+              ✓ Valid URL format
+            </span>
           )}
           {fieldErrors.originalUrl && (
             <span className="text-[11px] text-red-400 mt-1.5 block">{fieldErrors.originalUrl}</span>
@@ -183,10 +201,23 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           {/* Custom Alias */}
           <div>
-            <label htmlFor="custom-alias" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Custom Alias (Optional)
-            </label>
-            <div className="flex items-center gap-1.5 bg-slate-950/80 rounded-xl border border-slate-800 px-4 py-3 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="custom-alias" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Custom Alias (Optional)
+              </label>
+              {customAlias && (
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {customAlias.length}/30
+                </span>
+              )}
+            </div>
+            <div className={`flex items-center gap-1.5 bg-slate-950/80 rounded-xl border px-4 py-3 text-xs transition-all ${
+              aliasError
+                ? "border-red-500/50"
+                : isAliasValid
+                  ? "border-emerald-500/50"
+                  : "border-slate-800"
+            }`}>
               <span className="text-slate-500 shrink-0 font-medium select-none">shortify.local/</span>
               <input
                 id="custom-alias"
@@ -199,6 +230,11 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
             </div>
             {aliasError && (
               <span className="text-[11px] text-red-400 mt-1.5 block">{aliasError}</span>
+            )}
+            {isAliasValid && (
+              <span className="text-[11px] text-emerald-400 mt-1.5 block flex items-center gap-1 animate-in fade-in duration-200">
+                ✓ Valid alias format
+              </span>
             )}
             {fieldErrors.customAlias && (
               <span className="text-[11px] text-red-400 mt-1.5 block">{fieldErrors.customAlias}</span>
@@ -236,10 +272,20 @@ export const CreateUrlForm: React.FC<CreateUrlFormProps> = ({ onUrlCreated }) =>
           <div>
             <button
               type="submit"
-              disabled={submitting}
-              className="cursor-pointer w-full rounded-xl bg-indigo-650 hover:bg-indigo-650/90 text-white font-semibold text-xs py-3.5 shadow-md active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all h-[42px]"
+              disabled={submitting || !!urlError || !!aliasError}
+              className="cursor-pointer w-full rounded-xl bg-indigo-650 hover:bg-indigo-600 text-white font-semibold text-xs py-3.5 shadow-md active:scale-[0.99] disabled:opacity-40 disabled:bg-slate-900 disabled:border disabled:border-slate-900 disabled:text-slate-500 disabled:cursor-not-allowed transition-all h-[42px]"
             >
-              {submitting ? "Shortening URL..." : "Create URL"}
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Shortening...
+                </span>
+              ) : (
+                "Create URL"
+              )}
             </button>
           </div>
         </div>

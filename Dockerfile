@@ -4,13 +4,13 @@ WORKDIR /build
 
 # Copy only the pom.xml first to cache dependencies
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -B
 
 # Copy the source code
 COPY src ./src
 
 # Build the application
-RUN mvn clean package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn package -DskipTests
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine AS runner
